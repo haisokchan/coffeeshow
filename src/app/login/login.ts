@@ -78,9 +78,13 @@ export class LoginComponent implements OnInit {
     });
   }
 
+  // closeVerifyModal(): void {
+  //   console.log('Closing modal and redirecting...');
+  //   this.showVerifyModal = false;
+  //   this.router.navigateByUrl('/dashboard');
+  // }
   closeVerifyModal(): void {
-    console.log('Closing modal and redirecting...');
-    this.showVerifyModal = false;
-    this.router.navigateByUrl('/dashboard');
-  }
+  this.showVerifyModal = false;
+  this.router.navigateByUrl('/dashboard'); // ← this should work
+}
 }
