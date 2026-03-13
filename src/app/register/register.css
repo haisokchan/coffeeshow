@@ -1,0 +1,17 @@
+/* ============================================ */
+/* Register Page Styles                         */
+/* ============================================ */
+
+.page { min-height: 100vh; display: grid; place-items: center; padding: 20px; background: #f6f7fb; }
+.card { width: 100%; max-width: 420px; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+
+label { display:block; margin-top: 12px; font-weight: 600; }
+input, select { width: 100%; padding: 10px; margin-top: 6px; border: 1px solid #ddd; border-radius: 8px; }
+
+button { width: 100%; padding: 10px; margin-top: 16px; border: 0; border-radius: 8px; background: #111; color: #fff; cursor: pointer; }
+button:disabled { opacity: .6; cursor: not-allowed; }
+
+small { color: #b00020; display:block; margin-top: 6px; }
+.error { color: #b00020; margin-top: 10px; }
+.muted { margin-top: 12px; color: #666; }
+a { text-decoration: none; }

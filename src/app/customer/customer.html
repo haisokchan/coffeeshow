@@ -1,0 +1,222 @@
+<div class="min-h-screen bg-slate-950 text-slate-100">
+
+  <!-- Sticky Header -->
+  <div class="sticky top-0 z-30 border-b border-slate-800 bg-slate-950/85 backdrop-blur">
+    <div class="mx-auto max-w-6xl px-6 py-4">
+      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 class="text-xl font-semibold">👤 Customers Manager</h1>
+          <p class="text-sm text-slate-400">Link customers to products using favorites.</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2 text-sm">
+            Total: <b class="text-emerald-300">{{ customers().length }}</b>
+          </div>
+
+          <input
+            class="w-64 rounded-xl bg-slate-950/60 border border-slate-800 px-3 py-2 text-sm"
+            placeholder="Search name/phone/email..."
+            [(ngModel)]="query"
+            (ngModelChange)="loadCustomers()"
+          />
+
+          <button
+            class="rounded-xl bg-slate-800/70 px-4 py-2 text-sm ring-1 ring-slate-700 hover:bg-slate-800"
+            (click)="loadCustomers()"
+          >
+            ↻ Refresh
+          </button>
+
+          <button
+            type="button"
+            [routerLink]="['/dashboard']"
+            class="rounded-xl bg-slate-800/70 px-4 py-2 text-sm ring-1 ring-slate-700 hover:bg-slate-800"
+          >
+            ← Dashboard
+          </button>
+        </div>
+      </div>
+
+      <p class="mt-2 text-sm text-red-400" *ngIf="error">{{ error }}</p>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="p-6">
+    <div class="mx-auto max-w-6xl grid gap-6 md:grid-cols-3">
+
+      <!-- LEFT: Create -->
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
+        <h2 class="text-lg font-semibold">Add Customer</h2>
+
+        <form class="mt-4 space-y-4" [formGroup]="form" (ngSubmit)="save()">
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Customer name</label>
+            <input class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3"
+              placeholder="Example: John" formControlName="name"/>
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Phone</label>
+            <input class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3"
+              placeholder="Example: 094000999" formControlName="phone"/>
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Email (optional)</label>
+            <input class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3"
+              placeholder="Example: test@gmail.com" formControlName="email"/>
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Address (optional)</label>
+            <input class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3"
+              placeholder="Example: Phnom Penh" formControlName="address"/>
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Favorite Products</label>
+            <select multiple class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3 min-h-[140px]"
+              formControlName="favoriteProductIds">
+              <option *ngFor="let p of products()" [value]="p._id">
+                {{ p.name }} ({{ p.category }}) - ${{ p.price }}
+              </option>
+            </select>
+            <p class="mt-1 text-xs text-slate-500">Hold Ctrl/Command to select multiple products.</p>
+          </div>
+
+          <button class="w-full rounded-xl bg-emerald-600/20 ring-1 ring-emerald-500/30 p-3 font-semibold disabled:opacity-60"
+            [disabled]="loading || form.invalid">
+            {{ loading ? 'Saving...' : 'Create Customer' }}
+          </button>
+        </form>
+      </div>
+
+      <!-- RIGHT: List -->
+      <div class="md:col-span-2 rounded-2xl border border-slate-800 bg-slate-900/40 p-5 max-h-[72vh] overflow-auto">
+        <h2 class="text-lg font-semibold">Customers</h2>
+
+        <div class="mt-4 grid gap-3">
+          <div *ngFor="let c of customers()"
+            class="rounded-xl border border-slate-800 bg-slate-950/40 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+            <div class="min-w-0">
+              <p class="font-semibold truncate">{{ c.name }}</p>
+              <p class="text-xs text-slate-400">
+                {{ c.phone }}
+                <span *ngIf="c.email"> • {{ c.email }}</span>
+              </p>
+
+              <div class="mt-2 flex flex-wrap gap-2">
+                <span *ngIf="(c.favoriteProducts?.length || 0) === 0"
+                  class="text-xs px-2 py-1 rounded-full border border-slate-800 bg-slate-950/40 text-slate-300">
+                  No favorites
+                </span>
+
+                <span *ngFor="let p of c.favoriteProducts"
+                  class="text-xs px-2 py-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-200">
+                  {{ p.name }}
+                </span>
+              </div>
+            </div>
+
+            <div class="flex gap-2">
+              <button class="rounded-xl bg-slate-800/70 px-3 py-2 text-sm ring-1 ring-slate-700 hover:bg-slate-800"
+                (click)="openEdit(c)">
+                ✏️ Edit
+              </button>
+
+              <button class="rounded-xl bg-red-600/15 px-3 py-2 text-sm text-red-200 ring-1 ring-red-500/30 hover:bg-red-600/20"
+                (click)="deactivate(c._id)">
+                🗑 Deactivate
+              </button>
+            </div>
+          </div>
+
+          <p *ngIf="customers().length === 0" class="text-slate-400 text-sm">No customers yet.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ Edit Modal -->
+  <div *ngIf="editOpen" class="fixed inset-0 bg-black/60 backdrop-blur-sm grid place-items-center p-4">
+    <div class="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-950 p-5">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-semibold">Edit Customer</h3>
+        <button class="text-slate-400 hover:text-slate-200" (click)="closeEdit()">✕</button>
+      </div>
+
+      <p class="mt-2 text-sm text-red-400" *ngIf="editError">{{ editError }}</p>
+
+      <form class="mt-4 space-y-4" [formGroup]="editForm" (ngSubmit)="updateFromModal()">
+        <div>
+          <label class="block text-sm text-slate-300 mb-1">Customer name</label>
+          <input class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3"
+            formControlName="name" />
+        </div>
+
+        <div>
+          <label class="block text-sm text-slate-300 mb-1">Phone</label>
+          <input class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3"
+            formControlName="phone" />
+        </div>
+
+        <div>
+          <label class="block text-sm text-slate-300 mb-1">Email</label>
+          <input class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3"
+            formControlName="email" />
+        </div>
+
+        <div>
+          <label class="block text-sm text-slate-300 mb-1">Address</label>
+          <input class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3"
+            formControlName="address" />
+        </div>
+
+        <div>
+          <label class="block text-sm text-slate-300 mb-1">Favorite Products</label>
+          <select multiple class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3 min-h-[140px]"
+            formControlName="favoriteProductIds">
+            <option *ngFor="let p of products()" [value]="p._id">
+              {{ p.name }} ({{ p.category }}) - ${{ p.price }}
+            </option>
+          </select>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="button"
+            class="flex-1 rounded-xl bg-slate-800/70 px-4 py-3 text-sm font-semibold ring-1 ring-slate-700"
+            (click)="closeEdit()">
+            Cancel
+          </button>
+
+          <button class="flex-1 rounded-xl bg-emerald-600/20 px-4 py-3 text-sm font-semibold ring-1 ring-emerald-500/30 disabled:opacity-60"
+            [disabled]="loading || editForm.invalid">
+            {{ loading ? 'Updating...' : 'Update Customer' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ✅ Success Toast Popup -->
+  <div *ngIf="toastOpen" class="fixed inset-0 bg-black/60 backdrop-blur-sm grid place-items-center p-4">
+    <div class="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-950 p-5">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-emerald-200">✅ Success</h3>
+        <button class="text-slate-400 hover:text-slate-200" (click)="closeToast()">✕</button>
+      </div>
+
+      <p class="mt-3 text-sm text-slate-300">{{ toastMessage }}</p>
+
+      <div class="mt-5 flex gap-3">
+        <button class="flex-1 rounded-xl bg-emerald-600/20 px-4 py-3 text-sm font-semibold ring-1 ring-emerald-500/30"
+          (click)="closeToast()">
+          OK
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

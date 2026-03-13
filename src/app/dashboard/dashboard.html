@@ -1,0 +1,353 @@
+<div class="min-h-screen bg-slate-950 dark:bg-slate-950 light:bg-gray-50 text-slate-100 dark:text-slate-100 light:text-gray-900 transition-colors duration-200">
+  <!-- Top header -->
+  <header class="border-b border-slate-800/70 dark:border-slate-800/70 light:border-gray-200 bg-slate-950/60 dark:bg-slate-950/60 light:bg-white/80 backdrop-blur sticky top-0 z-50">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 flex-wrap gap-3">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-xl bg-emerald-600/20 dark:bg-emerald-600/20 light:bg-emerald-50 ring-1 ring-emerald-500/30 dark:ring-emerald-500/30 light:ring-emerald-200 grid place-items-center">
+          <span class="text-lg">☕</span>
+        </div>
+        <div>
+          <h1 class="text-lg font-semibold tracking-tight">ManageCoffee</h1>
+          <p class="text-xs text-slate-400 dark:text-slate-400 light:text-gray-500">Admin & POS Management</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 flex-wrap">
+        <!-- Theme Toggle Button -->
+        <button
+          (click)="themeService.toggleTheme()"
+          class="rounded-xl bg-slate-800/70 dark:bg-slate-800/70 light:bg-gray-100 px-4 py-2 text-sm font-medium ring-1 ring-slate-700 dark:ring-slate-700 light:ring-gray-300 hover:bg-slate-800 dark:hover:bg-slate-800 light:hover:bg-gray-200 transition-all duration-200 flex items-center gap-2"
+          [title]="themeService.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+        >
+          <span *ngIf="themeService.theme() === 'dark'" class="text-lg">🌙</span>
+          <span *ngIf="themeService.theme() === 'light'" class="text-lg">☀️</span>
+          <span class="hidden sm:inline">{{ themeService.theme() === 'dark' ? 'Dark' : 'Light' }}</span>
+        </button>
+
+        <span
+          class="rounded-full px-3 py-1 text-xs font-medium ring-1 whitespace-nowrap"
+          [ngClass]="{
+            'bg-emerald-500/10 text-emerald-300 ring-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30 light:bg-emerald-50 light:text-emerald-700 light:ring-emerald-200': user()?.role === 'admin',
+            'bg-blue-500/10 text-blue-300 ring-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300 dark:ring-blue-500/30 light:bg-blue-50 light:text-blue-700 light:ring-blue-200': user()?.role === 'manager',
+            'bg-slate-500/10 text-slate-200 ring-slate-500/30 dark:bg-slate-500/10 dark:text-slate-200 dark:ring-slate-500/30 light:bg-gray-100 light:text-gray-700 light:ring-gray-300': !user()?.role || (user()?.role !== 'admin' && user()?.role !== 'manager')
+          }"
+        >
+          {{ user()?.role || 'guest' }}
+        </span>
+
+        <a
+          routerLink="/user"
+          class="rounded-xl bg-slate-800/70 dark:bg-slate-800/70 light:bg-gray-100 px-4 py-2 text-sm font-medium ring-1 ring-slate-700 dark:ring-slate-700 light:ring-gray-300 hover:bg-slate-800 dark:hover:bg-slate-800 light:hover:bg-gray-200 transition-colors whitespace-nowrap"
+        >
+          👤 Logout
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Content -->
+  <main class="mx-auto grid max-w-6xl gap-6 px-4 py-6">
+    <!-- Welcome card -->
+    <section class="rounded-2xl border border-slate-800/70 dark:border-slate-800/70 light:border-gray-200 bg-slate-900/40 dark:bg-slate-900/40 light:bg-white p-6 shadow-xl shadow-black/20 dark:shadow-black/20 light:shadow-gray-200/50">
+      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p class="text-sm text-slate-400 dark:text-slate-400 light:text-gray-500">Welcome back</p>
+
+          <ng-container *ngIf="user(); else guest">
+            <h2 class="mt-1 text-2xl font-semibold">
+              Hi, <span class="text-emerald-300 dark:text-emerald-300 light:text-emerald-600">{{ user()?.username }}</span> 👋
+            </h2>
+            <p class="mt-1 text-sm text-slate-400 dark:text-slate-400 light:text-gray-600">
+              You are signed in as <b class="text-slate-200 dark:text-slate-200 light:text-gray-900">{{ user()?.role }}</b>.
+              Manage your coffee shop operations from here.
+            </p>
+          </ng-container>
+
+          <ng-template #guest>
+            <h2 class="mt-1 text-2xl font-semibold">Welcome 👋</h2>
+            <p class="mt-1 text-sm text-slate-400 dark:text-slate-400 light:text-gray-600">
+              Please login to view your dashboard features.
+            </p>
+          </ng-template>
+        </div>
+
+        <!-- Quick action buttons -->
+        <div class="flex flex-wrap gap-2 sm:gap-3">
+          <a routerLink="/order" class="rounded-xl bg-slate-800/70 dark:bg-slate-800/70 light:bg-gray-100 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium ring-1 ring-slate-700 dark:ring-slate-700 light:ring-gray-300 hover:bg-slate-800 dark:hover:bg-slate-800 light:hover:bg-gray-200 transition-colors whitespace-nowrap">
+            🧾 Orders
+          </a>
+          <a routerLink="/product" class="rounded-xl bg-slate-800/70 dark:bg-slate-800/70 light:bg-gray-100 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium ring-1 ring-slate-700 dark:ring-slate-700 light:ring-gray-300 hover:bg-slate-800 dark:hover:bg-slate-800 light:hover:bg-gray-200 transition-colors whitespace-nowrap">
+            🧃 Products
+          </a>
+          <a routerLink="/customer" class="rounded-xl bg-slate-800/70 dark:bg-slate-800/70 light:bg-gray-100 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium ring-1 ring-slate-700 dark:ring-slate-700 light:ring-gray-300 hover:bg-slate-800 dark:hover:bg-slate-800 light:hover:bg-gray-200 transition-colors whitespace-nowrap">
+            👤 Customers
+          </a>
+          <a routerLink="/payment" class="rounded-xl bg-slate-800/70 dark:bg-slate-800/70 light:bg-gray-100 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium ring-1 ring-slate-700 dark:ring-slate-700 light:ring-gray-300 hover:bg-slate-800 dark:hover:bg-slate-800 light:hover:bg-gray-200 transition-colors whitespace-nowrap">
+            💳 Payments
+          </a>
+          <a routerLink="/cart" class="rounded-xl bg-slate-800/70 dark:bg-slate-800/70 light:bg-gray-100 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium ring-1 ring-slate-700 dark:ring-slate-700 light:ring-gray-300 hover:bg-slate-800 dark:hover:bg-slate-800 light:hover:bg-gray-200 transition-colors whitespace-nowrap">
+            🛒 Cart
+          </a>
+          <a routerLink="/supplier" class="rounded-xl bg-slate-800/70 dark:bg-slate-800/70 light:bg-gray-100 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium ring-1 ring-slate-700 dark:ring-slate-700 light:ring-gray-300 hover:bg-slate-800 dark:hover:bg-slate-800 light:hover:bg-gray-200 transition-colors whitespace-nowrap">
+            🏭 Suppliers
+          </a>
+          <a routerLink="/checkout" class="rounded-xl bg-slate-800/70 dark:bg-slate-800/70 light:bg-gray-100 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium ring-1 ring-slate-700 dark:ring-slate-700 light:ring-gray-300 hover:bg-slate-800 dark:hover:bg-slate-800 light:hover:bg-gray-200 transition-colors whitespace-nowrap">
+            💳 Checkout
+          </a>
+          <a *ngIf="canManageUsers()" routerLink="/userList" class="rounded-xl bg-emerald-600/20 dark:bg-emerald-600/20 light:bg-emerald-50 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-emerald-200 dark:text-emerald-200 light:text-emerald-700 ring-1 ring-emerald-500/30 dark:ring-emerald-500/30 light:ring-emerald-200 hover:bg-emerald-600/25 dark:hover:bg-emerald-600/25 light:hover:bg-emerald-100 transition-colors whitespace-nowrap">
+            👥 Users
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats cards -->
+    <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <!-- Today's Sales -->
+      <div class="rounded-2xl border border-slate-800/70 dark:border-slate-800/70 light:border-gray-200 bg-slate-900/40 dark:bg-slate-900/40 light:bg-white p-5 hover:shadow-lg transition-shadow">
+        <p class="text-xs text-slate-400 dark:text-slate-400 light:text-gray-500">Today's Sales</p>
+        <p class="mt-2 text-2xl font-semibold text-emerald-300 dark:text-emerald-300 light:text-emerald-600">${{ formatMoney(todaySales()) }}</p>
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-500 light:text-gray-500">From paid orders</p>
+      </div>
+
+      <!-- Orders -->
+      <div class="rounded-2xl border border-slate-800/70 dark:border-slate-800/70 light:border-gray-200 bg-slate-900/40 dark:bg-slate-900/40 light:bg-white p-5 hover:shadow-lg transition-shadow">
+        <p class="text-xs text-slate-400 dark:text-slate-400 light:text-gray-500">Orders</p>
+        <p class="mt-2 text-2xl font-semibold">{{ orderTotal() }}</p>
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-500 light:text-gray-500">
+          <span class="text-yellow-400 dark:text-yellow-400 light:text-yellow-600">{{ orderPending() }}</span> Pending • 
+          <span class="text-emerald-400 dark:text-emerald-400 light:text-emerald-600">{{ orderPaid() }}</span> Paid
+        </p>
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-500 light:text-gray-500" *ngIf="orderCancelled() > 0">
+          <span class="text-red-400 dark:text-red-400 light:text-red-600">{{ orderCancelled() }}</span> Cancelled
+        </p>
+        <a routerLink="/order" class="mt-3 inline-flex text-xs text-emerald-300 dark:text-emerald-300 light:text-emerald-600 hover:underline">
+          Manage →
+        </a>
+      </div>
+
+      <!-- Products -->
+      <div class="rounded-2xl border border-slate-800/70 dark:border-slate-800/70 light:border-gray-200 bg-slate-900/40 dark:bg-slate-900/40 light:bg-white p-5 hover:shadow-lg transition-shadow">
+        <p class="text-xs text-slate-400 dark:text-slate-400 light:text-gray-500">Products</p>
+        <p class="mt-2 text-2xl font-semibold">{{ productItems() }}</p>
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-500 light:text-gray-500">
+          Qty: {{ productQty() }} • ${{ formatMoney(productAmount()) }}
+        </p>
+        <a routerLink="/product" class="mt-3 inline-flex text-xs text-emerald-300 dark:text-emerald-300 light:text-emerald-600 hover:underline">
+          Manage →
+        </a>
+      </div>
+
+      <!-- Customers -->
+      <div class="rounded-2xl border border-slate-800/70 dark:border-slate-800/70 light:border-gray-200 bg-slate-900/40 dark:bg-slate-900/40 light:bg-white p-5 hover:shadow-lg transition-shadow">
+        <p class="text-xs text-slate-400 dark:text-slate-400 light:text-gray-500">Customers</p>
+        <p class="mt-2 text-2xl font-semibold">{{ customerTotal() }}</p>
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-500 light:text-gray-500">
+          VIP: <span class="text-emerald-400 dark:text-emerald-400 light:text-emerald-600">{{ customerVIP() }}</span>
+        </p>
+        <a routerLink="/customer" class="mt-3 inline-flex text-xs text-emerald-300 dark:text-emerald-300 light:text-emerald-600 hover:underline">
+          Manage →
+        </a>
+      </div>
+
+      <!-- Payments -->
+      <div class="rounded-2xl border border-slate-800/70 dark:border-slate-800/70 light:border-gray-200 bg-slate-900/40 dark:bg-slate-900/40 light:bg-white p-5 hover:shadow-lg transition-shadow">
+        <p class="text-xs text-slate-400 dark:text-slate-400 light:text-gray-500">Payments</p>
+        <p class="mt-2 text-2xl font-semibold">{{ paymentTotal() }}</p>
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-500 light:text-gray-500">
+          <span class="text-emerald-400 dark:text-emerald-400 light:text-emerald-600">{{ paymentCompleted() }}</span> Done • 
+          <span class="text-yellow-400 dark:text-yellow-400 light:text-yellow-600">{{ paymentPending() }}</span> Pending
+        </p>
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-500 light:text-gray-500">
+          Today: <span class="text-emerald-300 dark:text-emerald-300 light:text-emerald-600">${{ formatMoney(paymentTodayTotal()) }}</span>
+        </p>
+        <a routerLink="/payment" class="mt-3 inline-flex text-xs text-emerald-300 dark:text-emerald-300 light:text-emerald-600 hover:underline">
+          Manage →
+        </a>
+      </div>
+
+      <!-- Suppliers -->
+      <div class="rounded-2xl border border-slate-800/70 dark:border-slate-800/70 light:border-gray-200 bg-slate-900/40 dark:bg-slate-900/40 light:bg-white p-5 hover:shadow-lg transition-shadow">
+        <p class="text-xs text-slate-400 dark:text-slate-400 light:text-gray-500">Suppliers</p>
+        <p class="mt-2 text-2xl font-semibold">{{ supplierTotal() }}</p>
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-500 light:text-gray-500">
+          <span class="text-emerald-400 dark:text-emerald-400 light:text-emerald-600">{{ supplierActive() }}</span> Active • 
+          <span class="text-yellow-400 dark:text-yellow-400 light:text-yellow-600">{{ supplierPreferred() }}</span> Preferred
+        </p>
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-500 light:text-gray-500" *ngIf="supplierInactive() > 0">
+          <span class="text-red-400 dark:text-red-400 light:text-red-600">{{ supplierInactive() }}</span> Inactive
+        </p>
+        <a routerLink="/supplier" class="mt-3 inline-flex text-xs text-emerald-300 dark:text-emerald-300 light:text-emerald-600 hover:underline">
+          Manage →
+        </a>
+      </div>
+    </section>
+
+    <!-- Activity Section -->
+    <section class="grid gap-4 md:grid-cols-2">
+      <!-- Recent Orders -->
+      <div class="rounded-2xl border border-slate-800/70 dark:border-slate-800/70 light:border-gray-200 bg-slate-900/40 dark:bg-slate-900/40 light:bg-white p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-base font-semibold">Recent Orders</h3>
+          <a routerLink="/order" class="text-xs text-emerald-300 dark:text-emerald-300 light:text-emerald-600 hover:underline">View all</a>
+        </div>
+
+        <div class="space-y-3 max-h-[300px] overflow-auto">
+          <div 
+            *ngFor="let order of recentOrders()"
+            class="rounded-xl border border-slate-800/70 dark:border-slate-800/70 light:border-gray-200 bg-slate-950/40 dark:bg-slate-950/40 light:bg-gray-50 p-4 hover:bg-slate-950/60 dark:hover:bg-slate-950/60 light:hover:bg-gray-100 transition-colors"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <p class="text-sm font-semibold text-slate-200 dark:text-slate-200 light:text-gray-900">
+                    {{ getCustomerName(order) }}
+                  </p>
+                  <span 
+                    class="rounded-full px-2 py-0.5 text-xs font-medium"
+                    [ngClass]="{
+                      'bg-yellow-500/10 text-yellow-300 ring-1 ring-yellow-500/30 dark:bg-yellow-500/10 dark:text-yellow-300 dark:ring-yellow-500/30 light:bg-yellow-50 light:text-yellow-700 light:ring-yellow-200': getOrderPaymentStatus(order) === 'pending',
+                      'bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30 light:bg-emerald-50 light:text-emerald-700 light:ring-emerald-200': getOrderPaymentStatus(order) === 'paid' || getOrderPaymentStatus(order) === 'completed',
+                      'bg-red-500/10 text-red-300 ring-1 ring-red-500/30 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/30 light:bg-red-50 light:text-red-700 light:ring-red-200': getOrderPaymentStatus(order) === 'cancelled' || getOrderPaymentStatus(order) === 'refunded'
+                    }"
+                  >
+                    {{ getOrderPaymentStatus(order) }}
+                  </span>
+                </div>
+                
+                <p class="mt-1 text-xs text-slate-400 dark:text-slate-400 light:text-gray-500">
+                  {{ formatDate(order.createdAt) }}
+                  <span *ngIf="order.orderNumber"> • #{{ order.orderNumber }}</span>
+                </p>
+
+                <div class="mt-2 text-xs text-slate-500 dark:text-slate-500 light:text-gray-600" *ngIf="order.items?.length">
+                  <span *ngFor="let item of order.items.slice(0, 2); let i = index">
+                    {{ item.product?.name || item.name || 'Product' }} × {{ item.qty }}
+                    <span *ngIf="i < order.items.slice(0, 2).length - 1"> • </span>
+                  </span>
+                  <span *ngIf="order.items.length > 2" class="text-slate-400 dark:text-slate-400 light:text-gray-500">
+                    +{{ order.items.length - 2 }} more
+                  </span>
+                </div>
+              </div>
+
+              <div class="text-right shrink-0">
+                <p class="text-sm font-semibold text-emerald-300 dark:text-emerald-300 light:text-emerald-600">
+                  ${{ formatMoney(getOrderTotal(order)) }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div 
+            *ngIf="recentOrders().length === 0"
+            class="rounded-xl border border-slate-800/70 dark:border-slate-800/70 light:border-gray-200 bg-slate-950/40 dark:bg-slate-950/40 light:bg-gray-50 p-6 text-center"
+          >
+            <p class="text-sm text-slate-200 dark:text-slate-200 light:text-gray-900 font-medium">No orders yet</p>
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-500 light:text-gray-500">Orders will appear here once created</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Payments -->
+      <div class="rounded-2xl border border-slate-800/70 dark:border-slate-800/70 light:border-gray-200 bg-slate-900/40 dark:bg-slate-900/40 light:bg-white p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-base font-semibold">Recent Payments</h3>
+          <a routerLink="/payment" class="text-xs text-emerald-300 dark:text-emerald-300 light:text-emerald-600 hover:underline">View all</a>
+        </div>
+
+        <div class="space-y-3 max-h-[300px] overflow-auto">
+          <div 
+            *ngFor="let payment of recentPayments()"
+            class="rounded-xl border border-slate-800/70 dark:border-slate-800/70 light:border-gray-200 bg-slate-950/40 dark:bg-slate-950/40 light:bg-gray-50 p-4 hover:bg-slate-950/60 dark:hover:bg-slate-950/60 light:hover:bg-gray-100 transition-colors"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <p class="text-sm font-semibold text-slate-200 dark:text-slate-200 light:text-gray-900">
+                    {{ payment.paymentNumber || 'Payment' }}
+                  </p>
+                  <span 
+                    class="rounded-full px-2 py-0.5 text-xs font-medium"
+                    [ngClass]="{
+                      'bg-yellow-500/10 text-yellow-300 ring-1 ring-yellow-500/30 dark:bg-yellow-500/10 dark:text-yellow-300 dark:ring-yellow-500/30 light:bg-yellow-50 light:text-yellow-700 light:ring-yellow-200': payment.status === 'pending',
+                      'bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30 light:bg-emerald-50 light:text-emerald-700 light:ring-emerald-200': payment.status === 'completed',
+                      'bg-red-500/10 text-red-300 ring-1 ring-red-500/30 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/30 light:bg-red-50 light:text-red-700 light:ring-red-200': payment.status === 'refunded'
+                    }"
+                  >
+                    {{ payment.status }}
+                  </span>
+                </div>
+                
+                <p class="mt-1 text-xs text-slate-400 dark:text-slate-400 light:text-gray-500">
+                  {{ formatDate(payment.createdAt) }}
+                </p>
+
+                <p class="mt-2 text-xs text-slate-500 dark:text-slate-500 light:text-gray-600 capitalize">
+                  💳 {{ getPaymentMethod(payment) }}
+                </p>
+              </div>
+
+              <div class="text-right shrink-0">
+                <p class="text-sm font-semibold text-emerald-300 dark:text-emerald-300 light:text-emerald-600">
+                  ${{ formatMoney(payment.amount) }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div 
+            *ngIf="recentPayments().length === 0"
+            class="rounded-xl border border-slate-800/70 dark:border-slate-800/70 light:border-gray-200 bg-slate-950/40 dark:bg-slate-950/40 light:bg-gray-50 p-6 text-center"
+          >
+            <p class="text-sm text-slate-200 dark:text-slate-200 light:text-gray-900 font-medium">No payments yet</p>
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-500 light:text-gray-500">Payments will appear here once processed</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tips Section -->
+    <section class="rounded-2xl border border-slate-800/70 dark:border-slate-800/70 light:border-gray-200 bg-slate-900/40 dark:bg-slate-900/40 light:bg-white p-6">
+      <h3 class="text-base font-semibold mb-4">Quick Tips</h3>
+
+      <ul class="grid gap-3 text-sm text-slate-300 dark:text-slate-300 light:text-gray-700 md:grid-cols-2">
+        <li class="flex gap-2">
+          <span class="mt-0.5 shrink-0">✅</span>
+          <span>Orders and payments are linked - check status on each order</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="mt-0.5 shrink-0">💰</span>
+          <span>Today's sales only count paid orders</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="mt-0.5 shrink-0">💳</span>
+          <span>Process payments for pending orders to complete them</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="mt-0.5 shrink-0">🏭</span>
+          <span>Track supplier performance by volume and frequency</span>
+        </li>
+        <li class="flex gap-2" *ngIf="canManageUsers()">
+          <span class="mt-0.5 shrink-0">👥</span>
+          <span>Use <b>Manage Users</b> to control staff access</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="mt-0.5 shrink-0">🌙</span>
+          <span>Toggle theme anytime with the button in header</span>
+        </li>
+      </ul>
+
+      <div class="mt-5 rounded-xl border border-emerald-500/20 dark:border-emerald-500/20 light:border-emerald-200 bg-emerald-500/10 dark:bg-emerald-500/10 light:bg-emerald-50 p-4">
+        <p class="text-sm font-semibold text-emerald-200 dark:text-emerald-200 light:text-emerald-700">System Status</p>
+        <p class="mt-1 text-xs text-emerald-200/80 dark:text-emerald-200/80 light:text-emerald-600">
+          ✅ Connected to MongoDB<br>
+          ✅ Real-time data enabled<br>
+          ✅ Orders ↔️ Payments linked<br>
+          ✅ Supplier tracking active<br>
+          {{ themeService.theme() === 'dark' ? '🌙 Dark' : '☀️ Light' }} mode active
+        </p>
+      </div>
+    </section>
+  </main>
+</div>

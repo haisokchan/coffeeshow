@@ -1,0 +1,442 @@
+<div class="min-h-screen bg-slate-950 text-slate-100">
+  <!-- Toast Notification -->
+  <div *ngIf="success" class="fixed top-4 right-4 z-50 animate-slide-in">
+    <div class="rounded-xl bg-emerald-600/90 backdrop-blur border border-emerald-500/50 px-6 py-4 shadow-2xl max-w-md">
+      <div class="flex items-start gap-3">
+        <span class="text-2xl">✅</span>
+        <div class="flex-1">
+          <p class="font-semibold text-white">Success!</p>
+          <p class="text-sm text-emerald-50">{{ success }}</p>
+        </div>
+        <button (click)="success = ''" class="text-white hover:text-emerald-100">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/85 backdrop-blur">
+    <div class="mx-auto max-w-7xl px-6 py-4">
+      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 rounded-xl bg-blue-600/20 ring-1 ring-blue-500/30 grid place-items-center">
+            🏭
+          </div>
+          <div>
+            <h1 class="text-lg font-semibold tracking-tight">Supplier Management</h1>
+            <p class="text-xs text-slate-400">Manage your suppliers and vendors</p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2 text-sm">
+            Active: <b class="text-blue-300">{{ activeSuppliers }}</b>
+          </div>
+          <div class="rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2 text-sm">
+            Preferred: <b class="text-emerald-300">{{ preferredSuppliers }}</b>
+          </div>
+          <div class="rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2 text-sm">
+            Total Purchases: <b class="text-emerald-300">${{ formatMoney(totalPurchases) }}</b>
+          </div>
+
+          <button
+            (click)="loadSuppliers()"
+            class="rounded-xl bg-slate-800/70 px-4 py-2 text-sm ring-1 ring-slate-700 hover:bg-slate-800"
+          >
+            ↻ Refresh
+          </button>
+
+          <button
+            (click)="openCreateForm()"
+            class="rounded-xl bg-blue-600/20 px-4 py-2 text-sm font-semibold text-blue-200 ring-1 ring-blue-500/30 hover:bg-blue-600/25"
+          >
+            + Add Supplier
+          </button>
+
+          <a
+            routerLink="/dashboard"
+            class="rounded-xl bg-slate-800/70 px-4 py-2 text-sm ring-1 ring-slate-700 hover:bg-slate-800"
+          >
+            ← Dashboard
+          </a>
+        </div>
+      </div>
+
+      <!-- Error message -->
+      <p class="mt-3 text-sm text-red-400" *ngIf="error">{{ error }}</p>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="p-6">
+    <div class="mx-auto max-w-7xl">
+      <!-- Search & Filters -->
+      <div class="mb-6 rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
+        <div class="grid gap-4 md:grid-cols-4">
+          <div class="md:col-span-2">
+            <label class="block text-sm text-slate-300 mb-2">Search</label>
+            <input
+              type="text"
+              class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3 placeholder-slate-500"
+              placeholder="Search by name, company, phone, email..."
+              [(ngModel)]="searchQuery"
+              (input)="onSearch()"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-2">Status Filter</label>
+            <select
+              class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3"
+              [(ngModel)]="filterActive"
+              (ngModelChange)="onFilterChange()"
+            >
+              <option [ngValue]="undefined">All</option>
+              <option [ngValue]="true">Active Only</option>
+              <option [ngValue]="false">Inactive Only</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-2">Preferred Filter</label>
+            <select
+              class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3"
+              [(ngModel)]="filterPreferred"
+              (ngModelChange)="onFilterChange()"
+            >
+              <option [ngValue]="undefined">All</option>
+              <option [ngValue]="true">Preferred Only</option>
+              <option [ngValue]="false">Non-Preferred</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Suppliers List -->
+      <div class="space-y-4">
+        <div
+          *ngFor="let supplier of suppliers()"
+          class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5 hover:bg-slate-900/60 transition-colors"
+        >
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <!-- Left: Info -->
+            <div class="flex-1 min-w-0">
+              <div class="flex items-start gap-3">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <h3 class="text-lg font-semibold text-slate-100">{{ supplier.name }}</h3>
+                    
+                    <span
+                      *ngIf="supplier.isPreferred"
+                      class="rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/30"
+                    >
+                      ⭐ Preferred
+                    </span>
+                    
+                    <span
+                      class="rounded-full px-2 py-0.5 text-xs font-medium"
+                      [ngClass]="{
+                        'bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/30': supplier.isActive,
+                        'bg-red-500/10 text-red-300 ring-1 ring-red-500/30': !supplier.isActive
+                      }"
+                    >
+                      {{ supplier.isActive ? 'Active' : 'Inactive' }}
+                    </span>
+                  </div>
+
+                  <p class="text-sm text-slate-400 mt-1" *ngIf="supplier.companyName">
+                    {{ supplier.companyName }}
+                  </p>
+
+                  <div class="mt-3 grid gap-2 text-sm text-slate-300 md:grid-cols-2">
+                    <div>
+                      <span class="text-slate-400">📞 Phone:</span> {{ supplier.phone }}
+                    </div>
+                    <div *ngIf="supplier.email">
+                      <span class="text-slate-400">📧 Email:</span> {{ supplier.email }}
+                    </div>
+                    <div *ngIf="supplier.contactPerson">
+                      <span class="text-slate-400">👤 Contact:</span> {{ supplier.contactPerson }}
+                    </div>
+                    <div *ngIf="supplier.paymentTerms">
+                      <span class="text-slate-400">💳 Terms:</span> {{ supplier.paymentTerms }}
+                    </div>
+                  </div>
+
+                  <!-- Stats -->
+                  <div class="mt-4 flex flex-wrap gap-4 text-sm">
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2">
+                      <span class="text-slate-400">Total Purchases:</span>
+                      <span class="ml-2 font-semibold text-emerald-300">${{ formatMoney(supplier.totalPurchases) }}</span>
+                    </div>
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2">
+                      <span class="text-slate-400">Orders:</span>
+                      <span class="ml-2 font-semibold text-blue-300">{{ supplier.totalOrders || 0 }}</span>
+                    </div>
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2" *ngIf="supplier.avgOrderValue">
+                      <span class="text-slate-400">Avg Order:</span>
+                      <span class="ml-2 font-semibold text-slate-200">${{ formatMoney(supplier.avgOrderValue) }}</span>
+                    </div>
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2" *ngIf="supplier.lastOrderDate">
+                      <span class="text-slate-400">Last Order:</span>
+                      <span class="ml-2 font-semibold text-slate-200">{{ formatDate(supplier.lastOrderDate) }}</span>
+                    </div>
+                  </div>
+
+                  <p class="mt-3 text-sm text-slate-400" *ngIf="supplier.notes">
+                    📝 {{ supplier.notes }}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Actions -->
+            <div class="flex flex-wrap gap-2 lg:flex-col">
+              <button
+                (click)="openEditForm(supplier)"
+                class="rounded-xl bg-slate-800/70 px-4 py-2 text-sm ring-1 ring-slate-700 hover:bg-slate-800"
+              >
+                ✏️ Edit
+              </button>
+
+              <button
+                (click)="toggleActive(supplier)"
+                class="rounded-xl px-4 py-2 text-sm ring-1"
+                [ngClass]="{
+                  'bg-emerald-600/20 text-emerald-200 ring-emerald-500/30 hover:bg-emerald-600/25': !supplier.isActive,
+                  'bg-yellow-600/20 text-yellow-200 ring-yellow-500/30 hover:bg-yellow-600/25': supplier.isActive
+                }"
+              >
+                {{ supplier.isActive ? '⏸️ Deactivate' : '▶️ Activate' }}
+              </button>
+
+              <button
+                (click)="deleteSupplier(supplier._id!)"
+                class="rounded-xl bg-red-600/15 px-4 py-2 text-sm text-red-200 ring-1 ring-red-500/30 hover:bg-red-600/20"
+              >
+                🗑️ Delete
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty state -->
+        <div
+          *ngIf="suppliers().length === 0 && !loading"
+          class="rounded-2xl border border-slate-800 bg-slate-900/40 p-10 text-center"
+        >
+          <p class="text-slate-400">No suppliers found.</p>
+          <button
+            (click)="openCreateForm()"
+            class="mt-4 rounded-xl bg-blue-600/20 px-4 py-2 text-sm font-semibold text-blue-200 ring-1 ring-blue-500/30 hover:bg-blue-600/25"
+          >
+            + Add Your First Supplier
+          </button>
+        </div>
+
+        <!-- Loading -->
+        <div *ngIf="loading" class="text-center py-10">
+          <p class="text-slate-400">Loading suppliers...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Form Modal -->
+  <div
+    *ngIf="showForm"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+    (click)="closeForm()"
+  >
+    <div
+      class="w-full max-w-2xl max-h-[90vh] overflow-auto rounded-2xl border border-slate-800 bg-slate-900 p-6"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-semibold">
+          {{ editMode ? 'Edit Supplier' : 'Add New Supplier' }}
+        </h2>
+        <button
+          (click)="closeForm()"
+          class="rounded-xl bg-slate-800/70 px-3 py-1 text-sm ring-1 ring-slate-700 hover:bg-slate-800"
+        >
+          ✕ Close
+        </button>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="saveSupplier()" class="space-y-4">
+        <!-- Basic Info -->
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Supplier Name *</label>
+            <input
+              type="text"
+              class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3"
+              formControlName="name"
+              placeholder="Enter supplier name"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Company Name</label>
+            <input
+              type="text"
+              class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3"
+              formControlName="companyName"
+              placeholder="Optional company name"
+            />
+          </div>
+        </div>
+
+        <!-- Contact Info -->
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Phone *</label>
+            <input
+              type="tel"
+              class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3"
+              formControlName="phone"
+              placeholder="Phone number"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Email</label>
+            <input
+              type="email"
+              class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3"
+              formControlName="email"
+              placeholder="email@example.com"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm text-slate-300 mb-1">Address</label>
+          <input
+            type="text"
+            class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3"
+            formControlName="address"
+            placeholder="Full address"
+          />
+        </div>
+
+        <!-- Additional Info -->
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Contact Person</label>
+            <input
+              type="text"
+              class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3"
+              formControlName="contactPerson"
+              placeholder="Contact person name"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Website</label>
+            <input
+              type="url"
+              class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3"
+              formControlName="website"
+              placeholder="https://example.com"
+            />
+          </div>
+        </div>
+
+        <!-- Business Info -->
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Tax Number</label>
+            <input
+              type="text"
+              class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3"
+              formControlName="taxNumber"
+              placeholder="Tax ID"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Payment Terms</label>
+            <select
+              class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3"
+              formControlName="paymentTerms"
+            >
+              <option *ngFor="let term of paymentTermsOptions" [value]="term">
+                {{ term }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm text-slate-300 mb-1">Credit Limit ($)</label>
+          <input
+            type="number"
+            class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3"
+            formControlName="creditLimit"
+            min="0"
+            placeholder="0.00"
+          />
+        </div>
+
+        <!-- Flags -->
+        <div class="flex items-center gap-3">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              class="rounded border-slate-700 bg-slate-950/60"
+              formControlName="isPreferred"
+            />
+            <span class="text-sm text-slate-300">⭐ Mark as Preferred Supplier</span>
+          </label>
+        </div>
+
+        <!-- Notes -->
+        <div>
+          <label class="block text-sm text-slate-300 mb-1">Notes</label>
+          <textarea
+            class="w-full rounded-xl bg-slate-950/60 border border-slate-800 p-3 min-h-[80px]"
+            formControlName="notes"
+            placeholder="Additional notes..."
+          ></textarea>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex gap-3 pt-4">
+          <button
+            type="submit"
+            class="flex-1 rounded-xl bg-blue-600/20 p-3 font-semibold text-blue-200 ring-1 ring-blue-500/30 hover:bg-blue-600/25 disabled:opacity-50"
+            [disabled]="loading || form.invalid"
+          >
+            {{ loading ? 'Saving...' : (editMode ? 'Update Supplier' : 'Create Supplier') }}
+          </button>
+
+          <button
+            type="button"
+            (click)="closeForm()"
+            class="rounded-xl bg-slate-800/70 px-6 py-3 text-sm ring-1 ring-slate-700 hover:bg-slate-800"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+</style>

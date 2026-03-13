@@ -1,0 +1,46 @@
+<div class="page">
+  <div class="card">
+    <h2>Register</h2>
+
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <label>Username</label>
+      <input type="text" formControlName="username" placeholder="username" />
+      <small *ngIf="form.controls.username.touched && form.controls.username.invalid">
+        Username must be at least 3 characters
+      </small>
+
+      <label>Email</label>
+      <input type="email" formControlName="email" placeholder="you@example.com" />
+      <small *ngIf="form.controls.email.touched && form.controls.email.invalid">
+        Enter a valid email
+      </small>
+
+      <label>Password</label>
+      <input type="password" formControlName="password" placeholder="••••" />
+      <small *ngIf="form.controls.password.touched && form.controls.password.invalid">
+        Password must be at least 4 characters
+      </small>
+
+      <label>Phone (optional)</label>
+      <input type="text" formControlName="phone" placeholder="012345678" />
+
+      <label>Role</label>
+      <select formControlName="role">
+        <option value="staff">staff</option>
+        <option value="manager">manager</option>
+        <option value="admin">admin</option>
+      </select>
+
+      <p class="error" *ngIf="error">{{ error }}</p>
+
+      <button type="submit" [disabled]="loading">
+        {{ loading ? 'Creating...' : 'Create account' }}
+      </button>
+    </form>
+
+    <p class="muted">
+      Already have an account?
+      <a routerLink="/login">Login</a>
+    </p>
+  </div>
+</div>

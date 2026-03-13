@@ -1,0 +1,193 @@
+<div class="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-4 py-8">
+  <div class="max-w-6xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <button
+          (click)="goBack()"
+          class="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 hover:bg-white/10 transition"
+        >
+          ← Back to Dashboard
+        </button>
+        <div>
+          <h1 class="text-2xl font-semibold text-white">User Management</h1>
+          <p class="text-sm text-white/60 mt-1">
+            Manage all users in the system
+          </p>
+        </div>
+      </div>
+
+      <button
+        (click)="logout()"
+        class="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 hover:bg-red-500/20 hover:border-red-500/30 transition"
+      >
+        Logout
+      </button>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-4">
+        <div class="text-white/60 text-xs mb-1">Total Users</div>
+        <div class="text-2xl font-semibold text-white">{{ users.length }}</div>
+      </div>
+      <div class="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-4">
+        <div class="text-white/60 text-xs mb-1">Admins</div>
+        <div class="text-2xl font-semibold text-rose-400">
+          {{ (users | json).split('"role":"admin"').length - 1 }}
+        </div>
+      </div>
+      <div class="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-4">
+        <div class="text-white/60 text-xs mb-1">Managers</div>
+        <div class="text-2xl font-semibold text-blue-400">
+          {{ (users | json).split('"role":"manager"').length - 1 }}
+        </div>
+      </div>
+      <div class="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-4">
+        <div class="text-white/60 text-xs mb-1">Staff</div>
+        <div class="text-2xl font-semibold text-emerald-400">
+          {{ (users | json).split('"role":"staff"').length - 1 }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Error Message -->
+    <div
+      *ngIf="error"
+      class="mb-6 rounded-xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"
+    >
+      {{ error }}
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="text-center py-12">
+      <div class="inline-flex items-center gap-2 text-white/60">
+        <svg class="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+        </svg>
+        Loading users...
+      </div>
+    </div>
+
+    <!-- Users Table -->
+    <div *ngIf="!loading" class="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-white/10">
+              <th class="px-6 py-4 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
+                User
+              </th>
+              <th class="px-6 py-4 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
+                Email
+              </th>
+              <th class="px-6 py-4 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
+                Phone
+              </th>
+              <th class="px-6 py-4 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
+                Role
+              </th>
+              <th class="px-6 py-4 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
+                Status
+              </th>
+              <th class="px-6 py-4 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/10">
+            <tr *ngFor="let user of users" class="hover:bg-white/5 transition">
+              <!-- User -->
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center gap-3">
+                  <div class="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-400 to-blue-500 flex items-center justify-center text-white font-semibold">
+                    {{ user.username.charAt(0).toUpperCase() }}
+                  </div>
+                  <div>
+                    <div class="text-sm font-medium text-white">{{ user.username }}</div>
+                    <div class="text-xs text-white/40">ID: {{ user._id?.substring(0, 8) || 'N/A' }}...</div>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Email -->
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-white/80">{{ user.email }}</div>
+              </td>
+
+              <!-- Phone -->
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-white/60">{{ user.phone || '-' }}</div>
+              </td>
+
+              <!-- Role -->
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span
+                  class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                  [ngClass]="{
+                    'bg-rose-500/20 text-rose-300 border border-rose-500/30': user.role === 'admin',
+                    'bg-blue-500/20 text-blue-300 border border-blue-500/30': user.role === 'manager',
+                    'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30': user.role === 'staff'
+                  }"
+                >
+                  {{ user.role }}
+                </span>
+              </td>
+
+              <!-- Status -->
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span
+                  class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                  [ngClass]="user.isActive 
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                    : 'bg-gray-500/20 text-gray-300 border border-gray-500/30'"
+                >
+                  <span class="mr-1.5 h-1.5 w-1.5 rounded-full" 
+                        [ngClass]="user.isActive ? 'bg-emerald-400' : 'bg-gray-400'"></span>
+                  {{ user.isActive ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
+
+              <!-- Actions -->
+              <td class="px-6 py-4 whitespace-nowrap text-sm">
+                <div class="flex items-center gap-2">
+                  <button
+                    class="text-white/60 hover:text-blue-400 transition"
+                    title="Edit user"
+                  >
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                  <button
+                    *ngIf="isAdmin && user._id"
+                    (click)="deleteUser(user._id, user.username)"
+                    class="text-white/60 hover:text-rose-400 transition"
+                    title="Delete user"
+                  >
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Empty State -->
+            <tr *ngIf="users.length === 0 && !loading">
+              <td colspan="6" class="px-6 py-12 text-center text-white/40">
+                No users found
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Footer Info -->
+    <div class="mt-6 text-center text-xs text-white/40">
+      <p>Logged in as <span class="text-white/60">{{ currentUser()?.username }}</span> ({{ currentUser()?.role }})</p>
+    </div>
+  </div>
+</div>
