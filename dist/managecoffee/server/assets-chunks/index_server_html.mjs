@@ -16,6 +16,6 @@ export default `<!doctype html>
 
   <script src="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.js"></script>
 
-<script src="main-GSKBFS7D.js" type="module"></script></body>
+<script src="main-DUGBR7RM.js" type="module"></script></body>
 </html>
 `;
