@@ -9,6 +9,7 @@ import { OrdersComponent } from './order/order';
 import { SupplierComponent } from './supplier/supplier';
 import { PaymentComponent } from './payment/payment';
 import { CartComponent } from './cart/cart';
+import { CartReportComponent } from './cart-report/cart-report';
 
 export const routes: Routes = [
   { 
@@ -45,6 +46,11 @@ export const routes: Routes = [
     path:'cart',component:CartComponent,
     canActivate:[authGuard],
     data:{roles:['admin','manager','staff','customer']}
+  },
+  {
+    path:'cart-report',component:CartReportComponent,
+     canActivate: [authGuard],
+    data: { roles: ['admin', 'manager', 'staff'] }
   },
   { 
     path: 'customer', 

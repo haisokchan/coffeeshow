@@ -1,7 +1,7 @@
-// services/cart.service.ts - Enhanced with Product Validation
+// services/cart.service.ts — Cart state + DB persistence + reporting
 import { Injectable, signal } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
-import { HttpClient } from '@angular/common/http';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 
 export interface CartItem {
@@ -25,148 +25,145 @@ export interface ValidationResult {
   maxQuantity?: number;
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+// ── What the DB stores ────────────────────────────────────────
+export interface CartSnapshot {
+  _id:          string;
+  cartNumber:   string;
+  status:       'active' | 'saved' | 'checked_out' | 'cleared' | 'expired';
+  customer:     { name: string; phone: string };
+  items:        CartSnapshotItem[];
+  subtotal:     number;
+  tax:          number;
+  taxRate:      number;
+  total:        number;
+  itemCount:    number;
+  productCount: number;
+  notes:        string;
+  telegramSent: boolean;
+  createdAt:    string;
+  updatedAt:    string;
+}
+
+export interface CartSnapshotItem {
+  productName: string;
+  category:    string;
+  price:       number;
+  quantity:    number;
+  itemTotal:   number;
+}
+
+export interface CartSnapshotListResponse {
+  success:  boolean;
+  carts:    CartSnapshot[];
+  meta:     { total: number; page: number; limit: number; pages: number };
+  summary:  { totalCarts: number; totalItems: number; totalValue: number; avgTotal: number };
+}
+
+export interface CartReportFilter {
+  status?: string;
+  from?:   string;
+  to?:     string;
+  page?:   number;
+  limit?:  number;
+  search?: string;
+}
+
+@Injectable({ providedIn: 'root' })
 export class CartService {
-  // ✅ FIX: use environment variable, not hardcoded production URL
   private API = `${environment.apiUrl}/cart`;
 
-  private cartItems = signal<CartItem[]>([]);
+  private cartItems  = signal<CartItem[]>([]);
   private cartSubject = new BehaviorSubject<CartItem[]>([]);
-
   cart$ = this.cartSubject.asObservable();
 
   constructor(private http: HttpClient) {
     this.loadCart();
   }
 
+  // ── Local storage ─────────────────────────────────────────
+
   private loadCart() {
     try {
-      const savedCart = localStorage.getItem('cart');
-      if (savedCart) {
-        const items = JSON.parse(savedCart);
+      const saved = localStorage.getItem('cart');
+      if (saved) {
+        const items = JSON.parse(saved);
         this.cartItems.set(items);
         this.cartSubject.next(items);
       }
     } catch {
-      // ✅ FIX: handle corrupt localStorage data gracefully
       localStorage.removeItem('cart');
     }
   }
 
-  private saveCart() {
+  private saveCartLocal() {
     const items = this.cartItems();
     localStorage.setItem('cart', JSON.stringify(items));
     this.cartSubject.next(items);
   }
 
-  getCart(): CartItem[] {
-    return this.cartItems();
-  }
+  getCart(): CartItem[] { return this.cartItems(); }
 
-  // ==========================================
-  // PRODUCT VALIDATION METHODS
-  // ==========================================
+  // ── Validation ────────────────────────────────────────────
 
   private validateProduct(product: any, quantity: number): ValidationResult {
-    if (!product || !product._id) {
-      return { valid: false, message: '❌ Invalid product: Product ID is missing' };
-    }
-    if (!product.name || product.name.trim() === '') {
-      return { valid: false, message: '❌ Invalid product: Product name is missing' };
-    }
-    if (product.isAvailable === false) {
-      return { valid: false, message: `❌ "${product.name}" is currently unavailable` };
-    }
-    if (!product.price || product.price <= 0) {
-      return { valid: false, message: `❌ "${product.name}" has an invalid price` };
-    }
-    if (!quantity || quantity <= 0) {
-      return { valid: false, message: '❌ Quantity must be at least 1' };
-    }
-    if (!Number.isInteger(quantity)) {
-      return { valid: false, message: '❌ Quantity must be a whole number' };
-    }
+    if (!product?._id)                    return { valid: false, message: '❌ Invalid product: missing ID' };
+    if (!product.name?.trim())            return { valid: false, message: '❌ Invalid product: missing name' };
+    if (product.isAvailable === false)    return { valid: false, message: `❌ "${product.name}" is unavailable` };
+    if (!product.price || product.price <= 0) return { valid: false, message: `❌ "${product.name}" has an invalid price` };
+    if (!quantity || quantity <= 0)       return { valid: false, message: '❌ Quantity must be at least 1' };
+    if (!Number.isInteger(quantity))      return { valid: false, message: '❌ Quantity must be a whole number' };
 
-    if (product.stock !== undefined && product.stock !== null) {
-      const currentCartQuantity = this.getItemQuantity(product._id);
-      const totalRequested = currentCartQuantity + quantity;
-
-      if (product.stock <= 0) {
-        return { valid: false, message: `❌ "${product.name}" is out of stock` };
-      }
-      if (totalRequested > product.stock) {
-        const available = product.stock - currentCartQuantity;
-        return {
-          valid: false,
-          message: `❌ Only ${available} unit${available !== 1 ? 's' : ''} of "${product.name}" available (${currentCartQuantity} already in cart)`,
-          maxQuantity: available
-        };
-      }
-      if (product.minStock && totalRequested > (product.stock - product.minStock)) {
-        console.warn(`⚠️ Warning: Adding "${product.name}" will bring stock close to minimum threshold`);
+    if (product.stock != null) {
+      const inCart = this.getItemQuantity(product._id);
+      const total  = inCart + quantity;
+      if (product.stock <= 0)    return { valid: false, message: `❌ "${product.name}" is out of stock` };
+      if (total > product.stock) {
+        const avail = product.stock - inCart;
+        return { valid: false, message: `❌ Only ${avail} unit(s) of "${product.name}" available`, maxQuantity: avail };
       }
     }
 
-    const MAX_QUANTITY_PER_ITEM = 99;
-    if (quantity > MAX_QUANTITY_PER_ITEM) {
-      return { valid: false, message: `❌ Maximum ${MAX_QUANTITY_PER_ITEM} units per item allowed` };
-    }
+    if (quantity > 99) return { valid: false, message: '❌ Maximum 99 units per item' };
 
     const validCategories = ['Coffee', 'Tea', 'Drink', 'Food', 'Dessert'];
-    if (!validCategories.includes(product.category)) {
-      return { valid: false, message: `❌ Invalid product category: ${product.category}` };
-    }
+    if (!validCategories.includes(product.category))
+      return { valid: false, message: `❌ Invalid category: ${product.category}` };
 
     return { valid: true };
   }
 
   validateCart(): { valid: boolean; errors: string[] } {
-    const items = this.cartItems();
+    const items  = this.cartItems();
     const errors: string[] = [];
-
-    if (items.length === 0) {
-      errors.push('❌ Cart is empty');
-      return { valid: false, errors };
-    }
-
-    items.forEach((item, index) => {
-      const validation = this.validateProduct(item.product, item.quantity);
-      if (!validation.valid) {
-        errors.push(`Item ${index + 1}: ${validation.message}`);
-      }
+    if (items.length === 0) { errors.push('❌ Cart is empty'); return { valid: false, errors }; }
+    items.forEach((item, i) => {
+      const v = this.validateProduct(item.product, item.quantity);
+      if (!v.valid) errors.push(`Item ${i + 1} (${item.product.name}): ${v.message}`);
     });
-
     return { valid: errors.length === 0, errors };
   }
 
-  addToCart(product: any, quantity: number = 1): ValidationResult {
-    const validation = this.validateProduct(product, quantity);
-    if (!validation.valid) return validation;
+  // ── Cart operations ───────────────────────────────────────
+
+  addToCart(product: any, quantity = 1): ValidationResult {
+    const v = this.validateProduct(product, quantity);
+    if (!v.valid) return v;
 
     const items = [...this.cartItems()];
-    const existingIndex = items.findIndex(item => item.product._id === product._id);
-
-    if (existingIndex > -1) {
-      const newQuantity = items[existingIndex].quantity + quantity;
-      const revalidation = this.validateProduct(product, newQuantity - items[existingIndex].quantity);
-      if (!revalidation.valid) return revalidation;
-      items[existingIndex].quantity = newQuantity;
+    const idx   = items.findIndex(i => i.product._id === product._id);
+    if (idx > -1) {
+      items[idx].quantity += quantity;
     } else {
       items.push({ product, quantity });
     }
-
     this.cartItems.set(items);
-    this.saveCart();
+    this.saveCartLocal();
 
-    // Non-blocking Telegram notification
     this.notifyItemAdded({ product, quantity }).subscribe({
-      next: () => console.log('✅ Cart notification sent'),
-      error: (err) => console.warn('⚠️ Cart notification failed:', err)
+      error: err => console.warn('⚠️ Telegram notify failed:', err)
     });
 
-    return { valid: true, message: `✅ "${product.name}" added to cart successfully!` };
+    return { valid: true, message: `✅ "${product.name}" added to cart!` };
   }
 
   updateQuantity(index: number, quantity: number): ValidationResult {
@@ -174,43 +171,34 @@ export class CartService {
     if (!items[index]) return { valid: false, message: '❌ Invalid cart item' };
     if (quantity <= 0) return { valid: false, message: '❌ Quantity must be at least 1' };
 
-    const product = items[index].product;
-    const currentQuantity = items[index].quantity;
-    const quantityDifference = quantity - currentQuantity;
-    const validation = this.validateProduct(product, quantityDifference);
-    if (!validation.valid) return validation;
+    const diff = quantity - items[index].quantity;
+    const v    = this.validateProduct(items[index].product, diff);
+    if (!v.valid) return v;
 
     items[index].quantity = quantity;
     this.cartItems.set(items);
-    this.saveCart();
-    return { valid: true, message: '✅ Quantity updated successfully' };
+    this.saveCartLocal();
+    return { valid: true };
   }
 
   increaseQuantity(index: number): ValidationResult {
     const items = [...this.cartItems()];
-    if (!items[index]) return { valid: false, message: '❌ Invalid cart item' };
-
-    const product = items[index].product;
-    const validation = this.validateProduct(product, 1);
-    if (!validation.valid) return validation;
-
+    if (!items[index]) return { valid: false, message: '❌ Invalid item' };
+    const v = this.validateProduct(items[index].product, 1);
+    if (!v.valid) return v;
     items[index].quantity++;
     this.cartItems.set(items);
-    this.saveCart();
+    this.saveCartLocal();
     return { valid: true };
   }
 
   decreaseQuantity(index: number): ValidationResult {
     const items = [...this.cartItems()];
-    if (!items[index]) return { valid: false, message: '❌ Invalid cart item' };
-
-    if (items[index].quantity <= 1) {
-      return { valid: false, message: '❌ Minimum quantity is 1. Remove item instead.' };
-    }
-
+    if (!items[index]) return { valid: false, message: '❌ Invalid item' };
+    if (items[index].quantity <= 1) return { valid: false, message: '❌ Minimum 1. Remove item instead.' };
     items[index].quantity--;
     this.cartItems.set(items);
-    this.saveCart();
+    this.saveCartLocal();
     return { valid: true };
   }
 
@@ -218,63 +206,96 @@ export class CartService {
     const items = [...this.cartItems()];
     items.splice(index, 1);
     this.cartItems.set(items);
-    this.saveCart();
+    this.saveCartLocal();
   }
 
   clearCart() {
-    const itemCount = this.getItemCount();
-    const totalValue = this.getTotal();
-
+    const count = this.getItemCount();
+    const value = this.getTotal();
     this.cartItems.set([]);
     localStorage.removeItem('cart');
     this.cartSubject.next([]);
-
-    if (itemCount > 0) {
-      this.notifyCartCleared(itemCount, totalValue).subscribe({
-        next: () => console.log('✅ Cart cleared notification sent'),
-        error: (err) => console.warn('⚠️ Cart clear notification failed:', err)
-      });
+    if (count > 0) {
+      this.notifyCartCleared(count, value).subscribe({ error: err => console.warn(err) });
     }
   }
 
-  getItemCount(): number {
-    return this.cartItems().reduce((sum, item) => sum + item.quantity, 0);
+  // ── Totals ────────────────────────────────────────────────
+
+  getItemCount():              number { return this.cartItems().reduce((s, i) => s + i.quantity, 0); }
+  getSubtotal():               number { return this.cartItems().reduce((s, i) => s + i.product.price * i.quantity, 0); }
+  getTax(rate = 0.1):          number { return this.getSubtotal() * rate; }
+  getTotal(rate = 0.1):        number { return this.getSubtotal() + this.getTax(rate); }
+  isInCart(id: string):       boolean { return this.cartItems().some(i => i.product._id === id); }
+  getItemQuantity(id: string): number { return this.cartItems().find(i => i.product._id === id)?.quantity ?? 0; }
+  canAddToCart(p: any, q = 1): ValidationResult { return this.validateProduct(p, q); }
+
+  // ── ✅ DB PERSISTENCE ─────────────────────────────────────
+
+  /** Save current cart to DB. Returns { cartNumber, cartId } */
+  saveCartToDB(customerInfo?: { name?: string; phone?: string }, notes = '', status = 'saved'): Observable<any> {
+    return this.http.post(`${this.API}/save`, {
+      cartItems:    this.getCart(),
+      customerInfo: customerInfo || { name: 'Guest', phone: '' },
+      notes,
+      status
+    });
   }
 
-  getSubtotal(): number {
-    return this.cartItems().reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  // ── ✅ REPORTING ──────────────────────────────────────────
+
+  /** Fetch list of saved cart snapshots with filters */
+  getSnapshots(filter: CartReportFilter = {}): Observable<CartSnapshotListResponse> {
+    let params = new HttpParams();
+    if (filter.status) params = params.set('status', filter.status);
+    if (filter.from)   params = params.set('from',   filter.from);
+    if (filter.to)     params = params.set('to',     filter.to);
+    if (filter.page)   params = params.set('page',   String(filter.page));
+    if (filter.limit)  params = params.set('limit',  String(filter.limit));
+    if (filter.search) params = params.set('search', filter.search);
+    return this.http.get<CartSnapshotListResponse>(`${this.API}/snapshots`, { params });
   }
 
-  getTax(taxRate: number = 0.1): number {
-    return this.getSubtotal() * taxRate;
+  /** Fetch a single cart snapshot by ID */
+  getSnapshot(id: string): Observable<{ success: boolean; cart: CartSnapshot }> {
+    return this.http.get<any>(`${this.API}/snapshots/${id}`);
   }
 
-  getTotal(taxRate: number = 0.1): number {
-    return this.getSubtotal() + this.getTax(taxRate);
+  /** Update status of a cart snapshot */
+  updateSnapshotStatus(id: string, status: string): Observable<any> {
+    return this.http.patch(`${this.API}/snapshots/${id}/status`, { status });
   }
 
-  isInCart(productId: string): boolean {
-    return this.cartItems().some(item => item.product._id === productId);
+  /** Delete a cart snapshot */
+  deleteSnapshot(id: string): Observable<any> {
+    return this.http.delete(`${this.API}/snapshots/${id}`);
   }
 
-  getItemQuantity(productId: string): number {
-    const item = this.cartItems().find(item => item.product._id === productId);
-    return item ? item.quantity : 0;
+  // ── ✅ PRINT ──────────────────────────────────────────────
+
+  /** Fetch print-ready receipt data for a cart snapshot */
+  getPrintReceipt(id: string): Observable<{ success: boolean; receipt: any }> {
+    return this.http.get<any>(`${this.API}/snapshots/${id}/print`);
   }
 
-  getAvailableQuantity(productId: string): number {
-    const item = this.cartItems().find(item => item.product._id === productId);
-    if (!item || !item.product.stock) return 0;
-    return item.product.stock - item.quantity;
+  /** Send a saved snapshot to Telegram */
+  sendSnapshotToTelegram(id: string): Observable<any> {
+    return this.http.post(`${this.API}/snapshots/${id}/telegram`, {});
   }
 
-  canAddToCart(product: any, quantity: number = 1): ValidationResult {
-    return this.validateProduct(product, quantity);
+  /** ✅ Render receipt as JPG → send to Telegram as photo */
+  sendReceiptImage(id: string): Observable<any> {
+    return this.http.post(`${this.API}/snapshots/${id}/send-image`, {});
   }
 
-  // ==========================================
-  // TELEGRAM NOTIFICATION METHODS
-  // ==========================================
+  /** ✅ Download receipt as JPG file */
+  downloadReceiptJpg(id: string): Observable<Blob> {
+    return this.http.get(`${this.API}/snapshots/${id}/download-jpg`, {
+      responseType: 'blob'
+    });
+  }
+
+  // ── TELEGRAM (live cart) ──────────────────────────────────
 
   notifyItemAdded(item: { product: any; quantity: number }) {
     return this.http.post(`${this.API}/notify-add`, {
@@ -285,7 +306,7 @@ export class CartService {
 
   sendCartSummary(customerInfo?: { name?: string; phone?: string }) {
     return this.http.post(`${this.API}/notify-summary`, {
-      cartItems: this.getCart(),
+      cartItems:    this.getCart(),
       customerInfo: customerInfo || null
     });
   }
