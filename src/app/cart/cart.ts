@@ -13,11 +13,11 @@ import { CartService, CartItem } from '../services/cart.service';
   templateUrl: './cart.html',
 })
 export class CartComponent implements OnInit, OnDestroy {
-  cartItems: CartItem[] = [];
-  sendingNotification = false;
-  savingCart          = false;
-  error               = '';
-  success             = '';
+  cartItems: CartItem[]      = [];
+  sendingNotification        = false;
+  savingCart                 = false;
+  error                      = '';
+  success                    = '';
   validationErrors: string[] = [];
 
   private cartSub!: Subscription;
@@ -160,7 +160,7 @@ export class CartComponent implements OnInit, OnDestroy {
 
   dismissValidationErrors() { this.validationErrors = []; }
 
-  // ── ✅ Save cart to DB ─────────────────────────────────────
+  // ── ✅ Save cart to DB ────────────────────────────────────
 
   saveCart() {
     if (this.cartItems.length === 0) { this.showError('Cart is empty'); return; }
@@ -185,7 +185,8 @@ export class CartComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── Telegram ──────────────────────────────────────────────
+  // ── ✅ Send Receipt to Telegram (manual button only) ──────
+  // Does NOT auto-send on addToCart — only when user clicks the button
 
   sendCartToTelegram() {
     if (this.cartItems.length === 0) { this.showError('Cart is empty'); return; }
@@ -198,13 +199,41 @@ export class CartComponent implements OnInit, OnDestroy {
     }
 
     this.sendingNotification = true;
-    this.cartService.sendCartSummary({ name: 'Guest Customer', phone: '' }).subscribe({
-      next: () => { this.sendingNotification = false; this.showSuccess('Cart sent to Telegram ✅'); },
-      error: () => { this.sendingNotification = false; this.showError('Failed to send to Telegram'); }
+
+    // Step 1: Save cart to DB to get a cart ID
+    this.cartService.saveCartToDB({ name: 'Guest Customer', phone: '' }).subscribe({
+      next: (res: any) => {
+        const cartId = res.cartId || res._id || res.id;
+
+        // Step 2: Send receipt as JPG image to Telegram
+        this.cartService.sendReceiptImage(cartId).subscribe({
+          next: () => {
+            this.sendingNotification = false;
+            this.showSuccess('Receipt image sent to Telegram ✅');
+          },
+          error: () => {
+            // Fallback: send as text receipt if image fails
+            this.cartService.sendSnapshotToTelegram(cartId).subscribe({
+              next: () => {
+                this.sendingNotification = false;
+                this.showSuccess('Receipt sent to Telegram ✅');
+              },
+              error: () => {
+                this.sendingNotification = false;
+                this.showError('Failed to send to Telegram');
+              }
+            });
+          }
+        });
+      },
+      error: (err: any) => {
+        this.sendingNotification = false;
+        this.showError(err?.error?.error || 'Failed to send to Telegram');
+      }
     });
   }
 
-  // ── Checkout ──────────────────────────────────────────────
+  // ── ✅ Checkout ───────────────────────────────────────────
 
   checkout() {
     if (this.cartItems.length === 0) { this.showError('Cart is empty'); return; }

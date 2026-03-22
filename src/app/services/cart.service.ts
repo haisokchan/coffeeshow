@@ -25,7 +25,6 @@ export interface ValidationResult {
   maxQuantity?: number;
 }
 
-// ── What the DB stores ────────────────────────────────────────
 export interface CartSnapshot {
   _id:          string;
   cartNumber:   string;
@@ -72,7 +71,7 @@ export interface CartReportFilter {
 export class CartService {
   private API = `${environment.apiUrl}/cart`;
 
-  private cartItems  = signal<CartItem[]>([]);
+  private cartItems   = signal<CartItem[]>([]);
   private cartSubject = new BehaviorSubject<CartItem[]>([]);
   cart$ = this.cartSubject.asObservable();
 
@@ -106,12 +105,12 @@ export class CartService {
   // ── Validation ────────────────────────────────────────────
 
   private validateProduct(product: any, quantity: number): ValidationResult {
-    if (!product?._id)                    return { valid: false, message: '❌ Invalid product: missing ID' };
-    if (!product.name?.trim())            return { valid: false, message: '❌ Invalid product: missing name' };
-    if (product.isAvailable === false)    return { valid: false, message: `❌ "${product.name}" is unavailable` };
+    if (!product?._id)                        return { valid: false, message: '❌ Invalid product: missing ID' };
+    if (!product.name?.trim())                return { valid: false, message: '❌ Invalid product: missing name' };
+    if (product.isAvailable === false)        return { valid: false, message: `❌ "${product.name}" is unavailable` };
     if (!product.price || product.price <= 0) return { valid: false, message: `❌ "${product.name}" has an invalid price` };
-    if (!quantity || quantity <= 0)       return { valid: false, message: '❌ Quantity must be at least 1' };
-    if (!Number.isInteger(quantity))      return { valid: false, message: '❌ Quantity must be a whole number' };
+    if (!quantity || quantity <= 0)           return { valid: false, message: '❌ Quantity must be at least 1' };
+    if (!Number.isInteger(quantity))          return { valid: false, message: '❌ Quantity must be a whole number' };
 
     if (product.stock != null) {
       const inCart = this.getItemQuantity(product._id);
@@ -159,9 +158,7 @@ export class CartService {
     this.cartItems.set(items);
     this.saveCartLocal();
 
-    this.notifyItemAdded({ product, quantity }).subscribe({
-      error: err => console.warn('⚠️ Telegram notify failed:', err)
-    });
+    // ✅ NO Telegram notification on add to cart
 
     return { valid: true, message: `✅ "${product.name}" added to cart!` };
   }
@@ -210,29 +207,24 @@ export class CartService {
   }
 
   clearCart() {
-    const count = this.getItemCount();
-    const value = this.getTotal();
+    // ✅ NO Telegram notification on clear cart
     this.cartItems.set([]);
     localStorage.removeItem('cart');
     this.cartSubject.next([]);
-    if (count > 0) {
-      this.notifyCartCleared(count, value).subscribe({ error: err => console.warn(err) });
-    }
   }
 
   // ── Totals ────────────────────────────────────────────────
 
-  getItemCount():              number { return this.cartItems().reduce((s, i) => s + i.quantity, 0); }
-  getSubtotal():               number { return this.cartItems().reduce((s, i) => s + i.product.price * i.quantity, 0); }
-  getTax(rate = 0.1):          number { return this.getSubtotal() * rate; }
-  getTotal(rate = 0.1):        number { return this.getSubtotal() + this.getTax(rate); }
-  isInCart(id: string):       boolean { return this.cartItems().some(i => i.product._id === id); }
-  getItemQuantity(id: string): number { return this.cartItems().find(i => i.product._id === id)?.quantity ?? 0; }
+  getItemCount():              number  { return this.cartItems().reduce((s, i) => s + i.quantity, 0); }
+  getSubtotal():               number  { return this.cartItems().reduce((s, i) => s + i.product.price * i.quantity, 0); }
+  getTax(rate = 0.1):          number  { return this.getSubtotal() * rate; }
+  getTotal(rate = 0.1):        number  { return this.getSubtotal() + this.getTax(rate); }
+  isInCart(id: string):        boolean { return this.cartItems().some(i => i.product._id === id); }
+  getItemQuantity(id: string): number  { return this.cartItems().find(i => i.product._id === id)?.quantity ?? 0; }
   canAddToCart(p: any, q = 1): ValidationResult { return this.validateProduct(p, q); }
 
   // ── ✅ DB PERSISTENCE ─────────────────────────────────────
 
-  /** Save current cart to DB. Returns { cartNumber, cartId } */
   saveCartToDB(customerInfo?: { name?: string; phone?: string }, notes = '', status = 'saved'): Observable<any> {
     return this.http.post(`${this.API}/save`, {
       cartItems:    this.getCart(),
@@ -244,7 +236,6 @@ export class CartService {
 
   // ── ✅ REPORTING ──────────────────────────────────────────
 
-  /** Fetch list of saved cart snapshots with filters */
   getSnapshots(filter: CartReportFilter = {}): Observable<CartSnapshotListResponse> {
     let params = new HttpParams();
     if (filter.status) params = params.set('status', filter.status);
@@ -256,70 +247,50 @@ export class CartService {
     return this.http.get<CartSnapshotListResponse>(`${this.API}/snapshots`, { params });
   }
 
-  /** Fetch a single cart snapshot by ID */
   getSnapshot(id: string): Observable<{ success: boolean; cart: CartSnapshot }> {
     return this.http.get<any>(`${this.API}/snapshots/${id}`);
   }
 
-  /** Update status of a cart snapshot */
   updateSnapshotStatus(id: string, status: string): Observable<any> {
     return this.http.patch(`${this.API}/snapshots/${id}/status`, { status });
   }
 
-  /** Delete a cart snapshot */
   deleteSnapshot(id: string): Observable<any> {
     return this.http.delete(`${this.API}/snapshots/${id}`);
   }
 
   // ── ✅ PRINT ──────────────────────────────────────────────
 
-  /** Fetch print-ready receipt data for a cart snapshot */
   getPrintReceipt(id: string): Observable<{ success: boolean; receipt: any }> {
     return this.http.get<any>(`${this.API}/snapshots/${id}/print`);
   }
 
-  /** Send a saved snapshot to Telegram */
+  // ── ✅ TELEGRAM — Receipt text + Image only ───────────────
+
+  /** Send receipt as TEXT message to Telegram */
   sendSnapshotToTelegram(id: string): Observable<any> {
     return this.http.post(`${this.API}/snapshots/${id}/telegram`, {});
   }
 
-  /** ✅ Render receipt as JPG → send to Telegram as photo */
+  /** Send receipt as JPG IMAGE to Telegram */
   sendReceiptImage(id: string): Observable<any> {
     return this.http.post(`${this.API}/snapshots/${id}/send-image`, {});
   }
 
-  /** ✅ Download receipt as JPG file */
+  /** Download receipt as JPG file */
   downloadReceiptJpg(id: string): Observable<Blob> {
     return this.http.get(`${this.API}/snapshots/${id}/download-jpg`, {
       responseType: 'blob'
     });
   }
 
-  // ── TELEGRAM (live cart) ──────────────────────────────────
+  // ── ✅ CHECKOUT notification only ────────────────────────
 
-  notifyItemAdded(item: { product: any; quantity: number }) {
-    return this.http.post(`${this.API}/notify-add`, {
-      item: { product: item.product, quantity: item.quantity },
-      cartTotal: this.getItemCount()
-    });
-  }
-
-  sendCartSummary(customerInfo?: { name?: string; phone?: string }) {
-    return this.http.post(`${this.API}/notify-summary`, {
-      cartItems:    this.getCart(),
-      customerInfo: customerInfo || null
-    });
-  }
-
-  notifyCheckout(customerInfo: { name?: string; phone?: string }, orderNumber?: string) {
+  notifyCheckout(customerInfo: { name?: string; phone?: string }, orderNumber?: string): Observable<any> {
     return this.http.post(`${this.API}/notify-checkout`, {
       cartItems: this.getCart(),
       customerInfo,
       orderNumber
     });
-  }
-
-  private notifyCartCleared(itemCount: number, totalValue: number) {
-    return this.http.post(`${this.API}/notify-cleared`, { itemCount, totalValue });
   }
 }
